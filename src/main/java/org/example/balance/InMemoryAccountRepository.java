@@ -1,4 +1,4 @@
-package org.example.balance.domain;
+package org.example.balance;
 
 import org.example.balance.exception.AccountAlreadyExistsException;
 import java.util.HashMap;

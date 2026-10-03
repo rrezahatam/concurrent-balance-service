@@ -1,4 +1,4 @@
-package org.example.balance.domain;
+package org.example.balance;
 
 import java.util.Optional;
 
