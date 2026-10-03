@@ -41,6 +41,9 @@ public final class DefaultBalanceService implements BalanceService{
 
         Account source = accounts.getOrThrow(sourceAccountId);
         Account destination = accounts.getOrThrow( destinationAccountId );
+        source.ensureCanWithdraw(amount);
+        destination.ensureCanDeposit(amount);
+
         source.withdraw(amount);
         destination.deposit(amount);
     }

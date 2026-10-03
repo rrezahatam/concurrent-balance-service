@@ -20,6 +20,7 @@ public class BalanceServiceBehaviourTest {
         AccountRepository repository = new InMemoryAccountRepository();
         repository.create("A", 1000);
         repository.create("B", 500);
+        repository.create("RICH", Long.MAX_VALUE - 10);
 
         service = new DefaultBalanceService(repository);
     }
@@ -81,6 +82,18 @@ public class BalanceServiceBehaviourTest {
 
         assertBalance("A", 1000);
         assertBalance("B", 500);
+    }
+
+    @Test
+    void credit_thatWouldOverflow_isRejected() {
+        assertThrows(BalanceOverflowException.class, () -> service.credit("RICH", 11, "TX-1"));
+        assertBalance("RICH", Long.MAX_VALUE - 10);
+    }
+    @Test
+    void transfer_intoAnAccountThatWouldOverflow_leavesBothAccountsUntouched() {
+        assertThrows(BalanceOverflowException.class, () -> service.transfer("A", "RICH", 100, "TX-1"));
+        assertBalance("A", 1_000);
+        assertBalance("RICH", Long.MAX_VALUE - 10);
     }
 
     @ParameterizedTest
