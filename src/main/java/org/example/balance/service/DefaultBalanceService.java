@@ -14,25 +14,36 @@ public final class DefaultBalanceService implements BalanceService{
 
     @Override
     public void credit(String accountId, long amount, String transactionId) {
+        Validation.identifier("accountId", accountId);
+        Validation.identifier("transactionId", transactionId);
+        Validation.positiveAmount(amount);
         accounts.getOrThrow(accountId).deposit(amount);
     }
 
     @Override
     public void debit(String accountId, long amount, String transactionId) {
+        Validation.identifier("accountId", accountId);
+        Validation.identifier("transactionId", transactionId);
+        Validation.positiveAmount(amount);
         accounts.getOrThrow(accountId).withdraw(amount);
     }
 
     @Override
     public void transfer(String sourceAccountId, String destinationAccountId, long amount, String transactionId) {
+        Validation.identifier("sourceAccountId", sourceAccountId);
+        Validation.identifier("destinationAccountId", destinationAccountId);
+        Validation.identifier("transactionId", transactionId);
+        Validation.positiveAmount(amount);
+
         Account source = accounts.getOrThrow(sourceAccountId);
         Account destination = accounts.getOrThrow( destinationAccountId );
-
         source.withdraw(amount);
         destination.deposit(amount);
     }
 
     @Override
     public long getBalance(String accountId) {
+        Validation.identifier("accountId", accountId);
         return accounts.getOrThrow(accountId).getBalance();
     }
 }

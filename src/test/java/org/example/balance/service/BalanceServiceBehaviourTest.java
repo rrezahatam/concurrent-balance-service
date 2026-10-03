@@ -2,10 +2,12 @@ package org.example.balance.service;
 
 import org.example.balance.domain.AccountRepository;
 import org.example.balance.domain.InMemoryAccountRepository;
-import org.example.balance.exception.AccountNotFoundException;
-import org.example.balance.exception.InsufficientFundsException;
+import org.example.balance.exception.*;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.NullAndEmptySource;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -39,7 +41,7 @@ public class BalanceServiceBehaviourTest {
     }
 
     @Test
-    void credit_increaseBalance(){
+    void credit_increaseBalance() {
         service.credit("A", 500, "TX-1");
         assertEquals(1500, service.getBalance("A"));
     }
@@ -58,7 +60,9 @@ public class BalanceServiceBehaviourTest {
 
     @Test
     void debit_withInsufficientFunds_failsAndLeavesTheBalanceUnchanged() {
-        assertThrows(InsufficientFundsException.class, () -> service.debit("A", 1_200, "TX-1"));
+        assertThrows(InsufficientFundsException.class,
+                () -> service.debit("A", 1_200, "TX-1"));
+
         assertBalance("A", 1000);
     }
 
@@ -72,26 +76,67 @@ public class BalanceServiceBehaviourTest {
 
     @Test
     void transfer_withInsufficientFunds_leavesBothAccountsUntouched() {
-        assertThrows(InsufficientFundsException.class, () -> service.transfer("A", "B", 1_200, "TX-1"));
+        assertThrows(InsufficientFundsException.class,
+                () -> service.transfer("A", "B", 1_200, "TX-1"));
 
         assertBalance("A", 1000);
+        assertBalance("B", 500);
+    }
+
+    @ParameterizedTest
+    @ValueSource(longs = {0, -1, Long.MIN_VALUE})
+    void nonPositiveAmounts_areRejectedForEveryOperation(long amount) {
+        assertThrows(InvalidAmountException.class,
+                () -> service.credit("A", amount, "TX-1"));
+
+        assertThrows(InvalidAmountException.class,
+                () -> service.debit("A", amount, "TX-2"));
+
+        assertThrows(InvalidAmountException.class,
+                () -> service.transfer("A", "B", amount, "TX-3"));
+
+        assertBalance("A", 1_000);
         assertBalance("B", 500);
     }
 
     @Test
     void unknownAccount_isRejectedForEveryOperation() {
-        assertThrows(AccountNotFoundException.class, () -> service.credit("NOPE", 10, "TX-1"));
-        assertThrows(AccountNotFoundException.class, () -> service.debit("NOPE", 10, "TX-2"));
-        assertThrows(AccountNotFoundException.class, () -> service.getBalance("NOPE"));
+        assertThrows(AccountNotFoundException.class,
+                () -> service.credit("NOPE", 10, "TX-1"));
+
+        assertThrows(AccountNotFoundException.class,
+                () -> service.debit("NOPE", 10, "TX-2"));
+
+        assertThrows(AccountNotFoundException.class,
+                () -> service.getBalance("NOPE"));
     }
 
     @Test
     void transfer_withUnknownAccount_isRejectedAndChangesNothing() {
-        assertThrows(AccountNotFoundException.class, () -> service.transfer("NOPE", "B", 10, "TX-1"));
-        assertThrows(AccountNotFoundException.class, () -> service.transfer("A", "NOPE", 10, "TX-2"));
+        assertThrows(AccountNotFoundException.class,
+                () -> service.transfer("NOPE", "B", 10, "TX-1"));
+
+        assertThrows(AccountNotFoundException.class,
+                () -> service.transfer("A", "NOPE", 10, "TX-2"));
 
         assertBalance("A", 1000);
         assertBalance("B", 500);
     }
 
+    @ParameterizedTest
+    @NullAndEmptySource
+    @ValueSource(strings = {" ", "\t"})
+    void blankIdentifiers_areRejected(String blank) {
+        assertThrows(InvalidIdentifierException.class,
+                () -> service.credit(blank, 10, "TX-1"));
+
+        assertThrows(InvalidIdentifierException.class,
+                () -> service.credit("A", 10, blank));
+
+        assertThrows(InvalidIdentifierException.class,
+                () -> service.transfer("A", blank, 10, "TX-2"));
+
+        assertThrows(InvalidIdentifierException.class,
+                () -> service.getBalance(blank));
+    }
 }
