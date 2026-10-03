@@ -2,6 +2,7 @@ package org.example.balance.service;
 
 import org.example.balance.domain.Account;
 import org.example.balance.domain.AccountRepository;
+import org.example.balance.exception.SameAccountTransferException;
 
 public final class DefaultBalanceService implements BalanceService{
 
@@ -34,6 +35,9 @@ public final class DefaultBalanceService implements BalanceService{
         Validation.identifier("destinationAccountId", destinationAccountId);
         Validation.identifier("transactionId", transactionId);
         Validation.positiveAmount(amount);
+        if (sourceAccountId.equals(destinationAccountId)) {
+            throw new SameAccountTransferException(sourceAccountId);
+        }
 
         Account source = accounts.getOrThrow(sourceAccountId);
         Account destination = accounts.getOrThrow( destinationAccountId );

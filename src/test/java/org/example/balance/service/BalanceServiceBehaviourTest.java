@@ -123,6 +123,12 @@ public class BalanceServiceBehaviourTest {
         assertBalance("B", 500);
     }
 
+    @Test
+    void transfer_toTheSameAccount_isRejectedAndChangesNothing() {
+        assertThrows(SameAccountTransferException.class, () -> service.transfer("A", "A", 100, "TX-1"));
+        assertBalance("A", 1_000);
+    }
+
     @ParameterizedTest
     @NullAndEmptySource
     @ValueSource(strings = {" ", "\t"})
