@@ -1,4 +1,4 @@
-package org.example.balance;
+package org.example.balance.domain;
 
 import org.example.balance.exception.InsufficientFundsException;
 

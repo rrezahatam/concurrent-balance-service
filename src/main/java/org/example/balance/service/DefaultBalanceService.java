@@ -1,8 +1,7 @@
 package org.example.balance.service;
 
-import org.example.balance.Account;
-import org.example.balance.AccountRepository;
-import org.example.balance.exception.AccountNotFoundException;
+import org.example.balance.domain.Account;
+import org.example.balance.domain.AccountRepository;
 
 public final class DefaultBalanceService implements BalanceService{
 
@@ -15,27 +14,18 @@ public final class DefaultBalanceService implements BalanceService{
 
     @Override
     public void credit(String accountId, long amount, String transactionId) {
-        accounts.find(accountId).orElseThrow(
-                ()-> new AccountNotFoundException(accountId)
-        ).deposit(amount);
+        accounts.getOrThrow(accountId).deposit(amount);
     }
 
     @Override
     public void debit(String accountId, long amount, String transactionId) {
-        accounts.find(accountId).orElseThrow(
-                ()-> new AccountNotFoundException(accountId)
-        ).withdraw(amount);
+        accounts.getOrThrow(accountId).withdraw(amount);
     }
 
     @Override
     public void transfer(String sourceAccountId, String destinationAccountId, long amount, String transactionId) {
-        Account source = accounts.find(sourceAccountId).orElseThrow(
-                () -> new AccountNotFoundException( sourceAccountId )
-        );
-
-        Account destination = accounts.find( destinationAccountId ).orElseThrow(
-                ()-> new AccountNotFoundException( destinationAccountId )
-        );
+        Account source = accounts.getOrThrow(sourceAccountId);
+        Account destination = accounts.getOrThrow( destinationAccountId );
 
         source.withdraw(amount);
         destination.deposit(amount);
@@ -43,8 +33,6 @@ public final class DefaultBalanceService implements BalanceService{
 
     @Override
     public long getBalance(String accountId) {
-        return accounts.find(accountId).orElseThrow(
-                ()-> new AccountNotFoundException(accountId)
-        ).getBalance();
+        return accounts.getOrThrow(accountId).getBalance();
     }
 }

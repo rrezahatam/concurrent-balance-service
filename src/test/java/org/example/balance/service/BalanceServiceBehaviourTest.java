@@ -1,7 +1,7 @@
 package org.example.balance.service;
 
-import org.example.balance.AccountRepository;
-import org.example.balance.InMemoryAccountRepository;
+import org.example.balance.domain.AccountRepository;
+import org.example.balance.domain.InMemoryAccountRepository;
 import org.example.balance.exception.AccountNotFoundException;
 import org.example.balance.exception.InsufficientFundsException;
 import org.junit.jupiter.api.BeforeEach;
@@ -20,6 +20,10 @@ public class BalanceServiceBehaviourTest {
         repository.create("B", 500);
 
         service = new DefaultBalanceService(repository);
+    }
+
+    private void assertBalance(String accountId, long expected) {
+        assertEquals(expected, service.getBalance(accountId), "balance of " + accountId);
     }
 
     @Test
@@ -43,37 +47,35 @@ public class BalanceServiceBehaviourTest {
     @Test
     void debit_decreasesBalance() {
         service.debit("A", 700, "TX-1");
-        assertEquals(300, service.getBalance("A"), "balance of " + "A");
-
+        assertBalance("A", 300);
     }
+
     @Test
     void debit_ofTheWholeBalance_isAllowed() {
         service.debit("A", 1_000, "TX-1");
-        assertEquals(0, service.getBalance("A"), "balance of " + "A");
-
+        assertBalance("A", 0);
     }
+
     @Test
     void debit_withInsufficientFunds_failsAndLeavesTheBalanceUnchanged() {
         assertThrows(InsufficientFundsException.class, () -> service.debit("A", 1_200, "TX-1"));
-        assertEquals(1000, service.getBalance("A"), "balance of " + "A");
-
+        assertBalance("A", 1000);
     }
 
     @Test
     void transfer_movesMoneyFromSourceToDestination() {
         service.transfer("A", "B", 300, "TX-1");
 
-        assertEquals(700, service.getBalance("A"), "balance of " + "A");
-        assertEquals(800, service.getBalance("B"), "balance of " + "B");
-
+        assertBalance("A", 700);
+        assertBalance("B", 800);
     }
+
     @Test
     void transfer_withInsufficientFunds_leavesBothAccountsUntouched() {
         assertThrows(InsufficientFundsException.class, () -> service.transfer("A", "B", 1_200, "TX-1"));
 
-        assertEquals(1000, service.getBalance("A"), "balance of " + "A");
-        assertEquals(500, service.getBalance("B"), "balance of " + "B");
-
+        assertBalance("A", 1000);
+        assertBalance("B", 500);
     }
 
     @Test
@@ -88,8 +90,8 @@ public class BalanceServiceBehaviourTest {
         assertThrows(AccountNotFoundException.class, () -> service.transfer("NOPE", "B", 10, "TX-1"));
         assertThrows(AccountNotFoundException.class, () -> service.transfer("A", "NOPE", 10, "TX-2"));
 
-        assertEquals(1000, service.getBalance("A"), "balance of " + "A");
-        assertEquals(500, service.getBalance("B"), "balance of " + "B");
+        assertBalance("A", 1000);
+        assertBalance("B", 500);
     }
 
 }

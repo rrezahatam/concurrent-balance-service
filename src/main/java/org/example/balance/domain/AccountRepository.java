@@ -1,4 +1,6 @@
-package org.example.balance;
+package org.example.balance.domain;
+
+import org.example.balance.exception.AccountNotFoundException;
 
 import java.util.Optional;
 
@@ -13,4 +15,7 @@ public interface AccountRepository {
 
     Optional<Account> find(String accountId);
 
+    default Account getOrThrow(String accountId) {
+        return find(accountId).orElseThrow(() -> new AccountNotFoundException(accountId));
+    }
 }

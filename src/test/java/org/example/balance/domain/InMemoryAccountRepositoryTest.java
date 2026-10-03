@@ -1,7 +1,5 @@
 package org.example.balance.domain;
 
-import org.example.balance.Account;
-import org.example.balance.InMemoryAccountRepository;
 import org.example.balance.exception.AccountAlreadyExistsException;
 import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
