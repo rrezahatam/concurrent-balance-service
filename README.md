@@ -1,0 +1,137 @@
+# Concurrent Balance Service
+
+A Java 21 / Spring Boot in-memory balance service designed for correctness under concurrent access. It supports:
+
+- `credit` and `debit`
+- atomic `transfer`
+- per-`transactionId` idempotency, including concurrent duplicates
+- thread-safe balance reads and updates
+
+The implementation deliberately focuses on concurrency correctness, explicit invariants, and testability. No database, Docker, or other infrastructure is required.
+
+## Quick Start
+
+Prerequisite: JDK 21. The Gradle wrapper is included.
+
+```bash
+./gradlew test          # Windows: gradlew.bat test
+```
+
+
+## Design At A Glance
+
+```text
+org.example.balance
+├── service
+│   ├── BalanceService
+│   ├── DefaultBalanceService
+│   ├── AccountLocking
+│   └── Validation
+├── domain
+│   ├── Account
+│   ├── AccountRepository
+│   └── InMemoryAccountRepository
+├── idempotency
+│   ├── IdempotencyGuard
+│   └── OperationFingerprint
+├── exception
+│   └── BalanceException hierarchy
+└── config
+    └── BalanceConfiguration
+```
+
+`BalanceService` is the application API. The core contains no Spring annotations; `BalanceConfiguration` provides the wiring. This keeps concurrency logic explicit, small, and unit-testable without a container.
+
+
+## Concurrency Model
+
+Each account owns a `ReentrantLock`. `AccountLocking` is the only component allowed to acquire account locks, and every balance read or write occurs while the corresponding lock is held. `try/finally` guarantees that locks are released even when validation or an operation fails.
+
+- Operations targeting the same account are serialized, preventing lost updates and negative balances.
+- Operations on unrelated accounts can proceed independently; there is no global service lock.
+- Account creation uses `ConcurrentMap.putIfAbsent`, so concurrent creation cannot replace an existing account.
+- `getBalance` locks the account, making a single-account read linearizable.
+
+
+Per-account locking is a deliberate balance between correctness and parallelism. A single service-wide lock would be simpler, but would unnecessarily serialize operations on unrelated accounts. `AtomicLong` would work for isolated balance changes, but does not provide a natural atomic protocol for changing two accounts during a transfer.
+
+## Idempotency
+
+`IdempotencyGuard` claims each `transactionId` with an atomic `putIfAbsent` and stores an operation fingerprint containing the relevant payload.
+
+1. The first caller becomes the owner and executes the operation.
+2. Concurrent or later duplicates wait for and replay the owner's outcome.
+3. A duplicate never applies the balance change again.
+4. Reusing an ID with a different payload fails with `IdempotencyConflictException`.
+
+The request flow is intentionally ordered as:
+
+```text
+stateless validation -> account lookup -> transaction claim -> account lock(s) -> operation
+```
+
+
+Business rejections such as `InsufficientFundsException` are remembered and replayed as final outcomes. Unexpected failures release the claim so a later attempt can retry. This separates expected business decisions from failures that may indicate a transient or programming problem.
+
+
+## Atomic Transfer And Deadlocks
+
+
+Transfers acquire both account locks in ascending `accountId` order. Before mutating either balance, the service validates source funds and destination overflow while holding both locks. Only then are the two balance updates performed.
+
+This guarantees:
+
+- no partial transfer is observable by another operation;
+- a rejected transfer leaves both accounts unchanged;
+- opposing transfers cannot deadlock, because all multi-account operations use the same lock order.
+
+`transfer(source, source, ...)` is rejected with `SameAccountTransferException`; treating it as a silent no-op would hide a client error.
+
+## Validation And Errors
+
+The service rejects invalid or unsafe operations through a domain-specific exception hierarchy, including:
+
+- non-positive amounts;
+- blank transaction IDs;
+- unknown accounts;
+- same-account transfers;
+- insufficient funds;
+- arithmetic overflow;
+- idempotency payload conflicts.
+
+Validation and account lookup happen before the transaction ID is claimed where appropriate, so malformed requests do not create permanent idempotency entries.
+
+## Verification
+
+The tests are organized around the required behavioral properties:
+
+- sequential credit, debit, transfer, validation, and overflow behavior;
+- repeated and concurrent idempotency for all three money operations;
+- concurrent single-account debits and mixed operations;
+- multi-account transfers, total-balance conservation, exact outcomes, and opposing-transfer deadlock checks;
+- deterministic lock-protocol checks proving that operations wait only for the accounts they touch;
+- Spring wiring and context startup.
+
+Concurrency tests use starting latches, seeded randomness, repeated runs, and deterministic race widening. The suite has also been mutation-checked against removed locking, check-then-act idempotency, unsafe transfer ordering, missing preconditions, and accidental global locking.
+
+## Engineering Trade-offs
+
+- **In-memory state:** keeps the solution focused and fast, but all balances are lost on restart.
+- **Single-JVM locking:** provides strong coordination inside one process, but does not protect against concurrent updates from another service instance.
+- **Unbounded idempotency registry:** makes replay behavior simple and reliable, but requires TTL or eviction in a long-running production service.
+- **No global lock:** preserves throughput across unrelated accounts, but the service intentionally does not provide a consistent multi-account snapshot.
+- **Synchronous duplicate waiting:** gives deterministic replay semantics and is appropriate for short in-memory operations; slow external work would require timeouts or a different execution model.
+
+
+These choices favor correctness, clarity, and reviewability for the challenge. A production extension would use a database transaction with row-level locks acquired in account-ID order, a unique transaction-ID constraint, an append-only ledger, an idempotency retention policy, metrics, and an HTTP layer.
+
+## Status
+
+| Capability | Status |
+|---|---|
+| Credit, debit, transfer, and balance reads | Implemented |
+| Thread safety and per-account concurrency | Implemented and tested |
+| Atomic transfers and deadlock prevention | Implemented and tested |
+| Concurrent idempotency | Implemented and tested |
+| Validation and overflow handling | Implemented and tested |
+| REST API | Not implemented|
