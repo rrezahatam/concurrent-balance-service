@@ -7,7 +7,8 @@ A Java 21 / Spring Boot in-memory balance service designed for correctness under
 - per-`transactionId` idempotency, including concurrent duplicates
 - thread-safe balance reads and updates
 
-The implementation deliberately focuses on concurrency correctness, explicit invariants, and testability. No database, Docker, or other infrastructure is required.
+The implementation focuses on concurrency correctness, explicit invariants, and testability. No database or external infrastructure is required.
+
 
 ## Quick Start
 
@@ -40,12 +41,13 @@ org.example.balance
     └── BalanceConfiguration
 ```
 
-`BalanceService` is the application API. The core contains no Spring annotations; `BalanceConfiguration` provides the wiring. This keeps concurrency logic explicit, small, and unit-testable without a container.
 
+
+`BalanceService` is the application API. The core contains no Spring annotations. `BalanceConfiguration` provides the wiring, keeping the core easy to test without a Spring context.
 
 ## Concurrency Model
 
-Each account owns a `ReentrantLock`. `AccountLocking` is the only component allowed to acquire account locks, and every balance read or write occurs while the corresponding lock is held. `try/finally` guarantees that locks are released even when validation or an operation fails.
+Each account owns a `ReentrantLock`. `AccountLocking` is the only component allowed to acquire account locks, and every balance read or write occurs while the corresponding lock is held.
 
 - Operations targeting the same account are serialized, preventing lost updates and negative balances.
 - Operations on unrelated accounts can proceed independently; there is no global service lock.
