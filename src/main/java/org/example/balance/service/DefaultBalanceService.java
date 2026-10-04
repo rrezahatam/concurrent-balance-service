@@ -46,7 +46,7 @@ public final class DefaultBalanceService implements BalanceService {
         Account source = accounts.getOrThrow(sourceAccountId);
         Account destination = accounts.getOrThrow(destinationAccountId);
 
-        AccountLocking.runBoth(source, destination, () -> {
+        AccountLocking.runOrdered(source, destination, () -> {
             source.ensureCanWithdraw(amount);
             destination.ensureCanDeposit(amount);
             source.withdraw(amount);
@@ -60,4 +60,6 @@ public final class DefaultBalanceService implements BalanceService {
         Account account = accounts.getOrThrow(accountId);
         return AccountLocking.read(account, account::getBalance);
     }
+
+
 }

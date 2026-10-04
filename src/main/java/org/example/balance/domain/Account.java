@@ -42,6 +42,13 @@ public final class Account {
     }
 
     /**
+     * True if any thread holds the lock. Observability only; never use it to decide whether to lock.
+     */
+    public boolean isLocked() {
+        return lock.isLocked();
+    }
+
+    /**
      * Current balance. The caller must hold the lock.
      */
     public long getBalance() {
