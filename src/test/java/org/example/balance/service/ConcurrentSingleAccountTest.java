@@ -3,6 +3,7 @@ package org.example.balance.service;
 import org.example.balance.domain.AccountRepository;
 import org.example.balance.domain.InMemoryAccountRepository;
 import org.example.balance.exception.InsufficientFundsException;
+import org.example.balance.idempotency.IdempotencyGuard;
 import org.junit.jupiter.api.RepeatedTest;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
@@ -25,7 +26,7 @@ class ConcurrentSingleAccountTest {
     private static DefaultBalanceService serviceWithAccountA(long initialBalance) {
         AccountRepository repository = new InMemoryAccountRepository();
         repository.create("A", initialBalance);
-        return new DefaultBalanceService(repository);
+        return new DefaultBalanceService(repository, new IdempotencyGuard());
     }
 
     /**

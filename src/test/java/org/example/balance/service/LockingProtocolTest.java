@@ -2,6 +2,7 @@ package org.example.balance.service;
 
 import org.example.balance.domain.Account;
 import org.example.balance.domain.InMemoryAccountRepository;
+import org.example.balance.idempotency.IdempotencyGuard;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -33,7 +34,7 @@ class LockingProtocolTest {
         repository.create("A", 100);
         repository.create("B", 100);
         repository.create("C", 100);
-        service = new DefaultBalanceService(repository);
+        service = new DefaultBalanceService(repository, new IdempotencyGuard());
         pool = Executors.newCachedThreadPool(daemonThreads());
     }
 

@@ -3,6 +3,7 @@ package org.example.balance.service;
 import org.example.balance.domain.AccountRepository;
 import org.example.balance.domain.InMemoryAccountRepository;
 import org.example.balance.exception.*;
+import org.example.balance.idempotency.IdempotencyGuard;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -22,7 +23,7 @@ public class BalanceServiceBehaviourTest {
         repository.create("B", 500);
         repository.create("RICH", Long.MAX_VALUE - 10);
 
-        service = new DefaultBalanceService(repository);
+        service = new DefaultBalanceService(repository, new IdempotencyGuard());
     }
 
     private void assertBalance(String accountId, long expected) {

@@ -3,6 +3,7 @@ package org.example.balance.service;
 import org.example.balance.domain.AccountRepository;
 import org.example.balance.domain.InMemoryAccountRepository;
 import org.example.balance.exception.InsufficientFundsException;
+import org.example.balance.idempotency.IdempotencyGuard;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
 
@@ -28,7 +29,7 @@ class ConcurrentMultiAccountTest {
         for (int i = 0; i < accountCount; i++) {
             repository.create("ACC-" + i, initialBalance);
         }
-        DefaultBalanceService service = new DefaultBalanceService(repository);
+        DefaultBalanceService service = new DefaultBalanceService(repository, new IdempotencyGuard());
 
         AtomicInteger completedTransfers = new AtomicInteger();
 
@@ -66,7 +67,7 @@ class ConcurrentMultiAccountTest {
             repository.create("SPOKE-" + i, 1_000);
         }
         repository.create("HUB", 0);
-        DefaultBalanceService service = new DefaultBalanceService(repository);
+        DefaultBalanceService service = new DefaultBalanceService(repository, new IdempotencyGuard());
 
 
         // 1,000 transfers of 10: every spoke is the source of exactly 20 of them.
@@ -86,7 +87,7 @@ class ConcurrentMultiAccountTest {
         AccountRepository repository = new InMemoryAccountRepository();
         repository.create("A", 1_000_000);
         repository.create("B", 1_000_000);
-        DefaultBalanceService service = new DefaultBalanceService(repository);
+        DefaultBalanceService service = new DefaultBalanceService(repository, new IdempotencyGuard());
 
 
         assertTimeoutPreemptively(Duration.ofSeconds(30), () -> {
