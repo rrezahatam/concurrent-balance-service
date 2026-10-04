@@ -91,12 +91,9 @@ This guarantees:
 
 The service rejects invalid or unsafe operations through a domain-specific exception hierarchy, including:
 
-- non-positive amounts;
-- blank transaction IDs;
-- unknown accounts;
-- same-account transfers;
-- insufficient funds;
-- arithmetic overflow;
+- non-positive amounts and blank transaction IDs;
+- unknown accounts and same-account transfers;
+- insufficient funds and arithmetic overflow;
 - idempotency payload conflicts.
 
 Validation and account lookup happen before the transaction ID is claimed where appropriate, so malformed requests do not create permanent idempotency entries.
@@ -106,25 +103,24 @@ Validation and account lookup happen before the transaction ID is claimed where 
 The tests are organized around the required behavioral properties:
 
 - sequential credit, debit, transfer, validation, and overflow behavior;
-- repeated and concurrent idempotency for all three money operations;
-- concurrent single-account debits and mixed operations;
-- multi-account transfers, total-balance conservation, exact outcomes, and opposing-transfer deadlock checks;
-- deterministic lock-protocol checks proving that operations wait only for the accounts they touch;
-- Spring wiring and context startup.
+- repeated and concurrent idempotency for all money operations;
+- concurrent single-account operations and multi-account transfers;
+- balance conservation, exact outcomes, and opposing-transfer deadlock checks;
+- deterministic lock-protocol checks and Spring context wiring.
 
-Concurrency tests use starting latches, seeded randomness, repeated runs, and deterministic race widening. The suite has also been mutation-checked against removed locking, check-then-act idempotency, unsafe transfer ordering, missing preconditions, and accidental global locking.
+Concurrency tests use latches, seeded randomness, repeated runs, and controlled race widening. Mutation checks cover locking, idempotency, transfer ordering, preconditions, and global locking.
 
 ## Engineering Trade-offs
 
-- **In-memory state:** keeps the solution focused and fast, but all balances are lost on restart.
-- **Single-JVM locking:** provides strong coordination inside one process, but does not protect against concurrent updates from another service instance.
-- **Unbounded idempotency registry:** makes replay behavior simple and reliable, but requires TTL or eviction in a long-running production service.
-- **No global lock:** preserves throughput across unrelated accounts, but the service intentionally does not provide a consistent multi-account snapshot.
-- **Synchronous duplicate waiting:** gives deterministic replay semantics and is appropriate for short in-memory operations; slow external work would require timeouts or a different execution model.
+- **In-memory state:** simple and fast, but lost on restart.
+- **Single-JVM locking:** strong within one process, but does not coordinate multiple instances.
+- **Unbounded idempotency registry:** reliable replay, but needs TTL or eviction in production.
+- **No global lock:** preserves parallelism, but provides no consistent multi-account snapshot.
+- **Synchronous duplicate waiting:** suitable for short in-memory work; slow operations would need timeouts.
+- **No REST layer:** keeps the focus on the service contract; an adapter can add HTTP status mapping and `Idempotency-Key` support.
 
 
-These choices favor correctness, clarity, and reviewability for the challenge. A production extension would use a database transaction with row-level locks acquired in account-ID order, a unique transaction-ID constraint, an append-only ledger, an idempotency retention policy, metrics, and an HTTP layer.
-
+For production, the natural extensions are database transactions with ordered row locks, a unique transaction-ID constraint, an append-only ledger, retention for idempotency records, metrics, and an HTTP layer.
 ## Status
 
 | Capability | Status |
