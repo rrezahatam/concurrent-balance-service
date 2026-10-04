@@ -53,7 +53,9 @@ Each account owns a `ReentrantLock`. `AccountLocking` is the only component allo
 - `getBalance` locks the account, making a single-account read linearizable.
 
 
-Per-account locking is a deliberate balance between correctness and parallelism. A single service-wide lock would be simpler, but would unnecessarily serialize operations on unrelated accounts. `AtomicLong` would work for isolated balance changes, but does not provide a natural atomic protocol for changing two accounts during a transfer.
+
+
+Per-account locking preserves correctness without serializing unrelated accounts. `AtomicLong` suits isolated balance changes but does not provide a natural atomic protocol for transfers across two accounts.
 
 ## Idempotency
 
@@ -71,8 +73,7 @@ stateless validation -> account lookup -> transaction claim -> account lock(s) -
 ```
 
 
-Business rejections such as `InsufficientFundsException` are remembered and replayed as final outcomes. Unexpected failures release the claim so a later attempt can retry. This separates expected business decisions from failures that may indicate a transient or programming problem.
-
+Business rejections such as `InsufficientFundsException` are stored and replayed. Unexpected failures release the claim so later attempts can retry, distinguishing expected business outcomes from transient or programming failures.
 
 ## Atomic Transfer And Deadlocks
 
