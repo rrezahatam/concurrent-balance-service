@@ -1,21 +1,20 @@
 package org.example.balance.domain;
 
 import org.example.balance.exception.AccountAlreadyExistsException;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 
 public class InMemoryAccountRepository implements AccountRepository {
 
-    private final Map<String, Account> accounts = new HashMap<>();
+    private final ConcurrentMap<String, Account> accounts = new ConcurrentHashMap<>();
 
     @Override
     public Account create(String accountId, long initialBalance) {
-        if (accounts.containsKey(accountId))
+        Account account = new Account(accountId, initialBalance); // validates its arguments
+        if (accounts.putIfAbsent(accountId, account) != null)     // atomic: no check-then-act
             throw new AccountAlreadyExistsException(accountId);
 
-        Account account = new Account(accountId, initialBalance);
-        accounts.put(accountId, account);
         return account;
     }
 

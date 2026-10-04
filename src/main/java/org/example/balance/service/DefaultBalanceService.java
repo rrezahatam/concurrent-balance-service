@@ -4,7 +4,7 @@ import org.example.balance.domain.Account;
 import org.example.balance.domain.AccountRepository;
 import org.example.balance.exception.SameAccountTransferException;
 
-public final class DefaultBalanceService implements BalanceService{
+public final class DefaultBalanceService implements BalanceService {
 
     private final AccountRepository accounts;
 
@@ -18,7 +18,9 @@ public final class DefaultBalanceService implements BalanceService{
         Validation.identifier("accountId", accountId);
         Validation.identifier("transactionId", transactionId);
         Validation.positiveAmount(amount);
-        accounts.getOrThrow(accountId).deposit(amount);
+
+        Account account = accounts.getOrThrow(accountId);
+        AccountLocking.run(account, () -> account.deposit(amount));
     }
 
     @Override
@@ -26,7 +28,9 @@ public final class DefaultBalanceService implements BalanceService{
         Validation.identifier("accountId", accountId);
         Validation.identifier("transactionId", transactionId);
         Validation.positiveAmount(amount);
-        accounts.getOrThrow(accountId).withdraw(amount);
+
+        Account account = accounts.getOrThrow(accountId);
+        AccountLocking.run(account, () -> account.withdraw(amount));
     }
 
     @Override
@@ -40,17 +44,20 @@ public final class DefaultBalanceService implements BalanceService{
         }
 
         Account source = accounts.getOrThrow(sourceAccountId);
-        Account destination = accounts.getOrThrow( destinationAccountId );
-        source.ensureCanWithdraw(amount);
-        destination.ensureCanDeposit(amount);
+        Account destination = accounts.getOrThrow(destinationAccountId);
 
-        source.withdraw(amount);
-        destination.deposit(amount);
+        AccountLocking.runBoth(source, destination, () -> {
+            source.ensureCanWithdraw(amount);
+            destination.ensureCanDeposit(amount);
+            source.withdraw(amount);
+            destination.deposit(amount);
+        });
     }
 
     @Override
     public long getBalance(String accountId) {
         Validation.identifier("accountId", accountId);
-        return accounts.getOrThrow(accountId).getBalance();
+        Account account = accounts.getOrThrow(accountId);
+        return AccountLocking.read(account, account::getBalance);
     }
 }
